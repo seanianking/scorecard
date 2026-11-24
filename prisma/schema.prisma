@@ -1,0 +1,231 @@
+// Scorecard data model.
+// SQLite for local development; switch `provider` to "postgresql" for production.
+// SQLite has no native enums, so enum-like fields are Strings validated in app code
+// (see src/lib/constants.js).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  sessions      Session[]
+  directing     Pageant[]    @relation("PageantDirector")
+  contestantIn  Contestant[]
+  judgeIn       Judge[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique // SHA-256 of the cookie token; raw token is never stored
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Pageant {
+  id               String    @id @default(cuid())
+  name             String
+  description      String    @default("")
+  location         String    @default("")
+  eventDate        DateTime? // age eligibility is computed as of this date
+  status           String    @default("SETUP") // SETUP | REGISTRATION | JUDGING | COMPLETE
+  resultsPublished Boolean   @default(false)
+  requirePhoto     Boolean   @default(false) // contestants must upload a photo to register
+  directorId       String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  director    User         @relation("PageantDirector", fields: [directorId], references: [id])
+  ageGroups   AgeGroup[]
+  questions   Question[]
+  events        Event[]
+  quickComments QuickComment[]
+  invites       Invite[]
+  contestants Contestant[]
+  judges      Judge[]
+
+  @@index([directorId])
+}
+
+model AgeGroup {
+  id        String @id @default(cuid())
+  pageantId String
+  name      String
+  minAge    Int
+  maxAge    Int
+  sortOrder Int    @default(0)
+
+  pageant     Pageant      @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+  contestants Contestant[]
+
+  @@index([pageantId])
+}
+
+model Question {
+  id        String  @id @default(cuid())
+  pageantId String
+  prompt    String
+  type      String  @default("SHORT_TEXT") // SHORT_TEXT | LONG_TEXT
+  required  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  pageant Pageant  @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+  answers Answer[]
+
+  @@index([pageantId])
+}
+
+// A competition segment within a pageant (e.g. Interview, Talent, Evening Wear).
+model Event {
+  id          String @id @default(cuid())
+  pageantId   String
+  name        String
+  description String @default("")
+  sortOrder   Int    @default(0)
+
+  pageant   Pageant     @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+  criteria  Criterion[]
+  feedback  Feedback[]
+
+  @@index([pageantId])
+}
+
+// Director-defined canned feedback that judges can insert into their comments.
+model QuickComment {
+  id        String @id @default(cuid())
+  pageantId String
+  text      String
+  sortOrder Int    @default(0)
+
+  pageant Pageant @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+
+  @@index([pageantId])
+}
+
+model Criterion {
+  id          String @id @default(cuid())
+  eventId     String
+  name        String
+  description String @default("")
+  maxScore    Int    @default(10)
+  weight      Float  @default(1)
+  sortOrder   Int    @default(0)
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  scores Score[]
+
+  @@index([eventId])
+}
+
+model Invite {
+  id        String    @id @default(cuid())
+  pageantId String
+  role      String    // CONTESTANT | JUDGE
+  label     String    @default("") // who it's for, e.g. an email or name; informational only
+  token     String    @unique
+  singleUse Boolean   @default(true)
+  uses      Int       @default(0)
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  pageant Pageant @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+
+  @@index([pageantId])
+}
+
+model Contestant {
+  id               String    @id @default(cuid())
+  pageantId        String
+  userId           String
+  ageGroupId       String?
+  displayName      String    @default("")
+  dateOfBirth      DateTime?
+  contestantNumber Int?
+  photoKey         String?   // filename in UPLOAD_DIR; served only via /api/photos/[contestantId]
+  photoUpdatedAt   DateTime? // cache-busting version for the photo URL
+  registeredAt     DateTime? // null until the registration form is submitted
+  createdAt        DateTime  @default(now())
+
+  pageant  Pageant    @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ageGroup AgeGroup?  @relation(fields: [ageGroupId], references: [id], onDelete: SetNull)
+  answers  Answer[]
+  scores   Score[]
+  feedback Feedback[]
+
+  @@unique([pageantId, userId])
+  @@index([ageGroupId])
+}
+
+model Answer {
+  id           String @id @default(cuid())
+  contestantId String
+  questionId   String
+  value        String
+
+  contestant Contestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  question   Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([contestantId, questionId])
+}
+
+model Judge {
+  id        String   @id @default(cuid())
+  pageantId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  pageant  Pageant    @relation(fields: [pageantId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores   Score[]
+  feedback Feedback[]
+
+  @@unique([pageantId, userId])
+}
+
+model Score {
+  id           String   @id @default(cuid())
+  judgeId      String
+  contestantId String
+  criterionId  String
+  value        Float
+  updatedAt    DateTime @updatedAt
+
+  judge      Judge      @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  contestant Contestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  criterion  Criterion  @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@unique([judgeId, contestantId, criterionId])
+  @@index([contestantId])
+}
+
+model Feedback {
+  id           String   @id @default(cuid())
+  judgeId      String
+  contestantId String
+  eventId      String
+  comment      String
+  updatedAt    DateTime @updatedAt
+
+  judge      Judge      @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  contestant Contestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([judgeId, contestantId, eventId])
+  @@index([contestantId])
+}

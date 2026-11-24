@@ -1,101 +1,51 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { ButtonLink } from "@/components/ui";
 
-export default function Home() {
+const FEATURES = [
+  {
+    title: "For directors",
+    body: "Create a pageant, define age groups, bio questions, events and weighted judging criteria, then invite contestants and judges with a link.",
+  },
+  {
+    title: "For contestants",
+    body: "Accept an invite, choose your age division, and answer the director's bio questions. See your scores and judges' feedback when results are published.",
+  },
+  {
+    title: "For judges",
+    body: "Score each contestant event by event against the director's criteria and leave written feedback, from any device.",
+  },
+];
+
+export default async function Home() {
+  if (await getCurrentUser()) redirect("/dashboard");
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="py-10">
+      <section className="max-w-2xl">
+        <p className="text-sm font-semibold uppercase tracking-wider text-plum-700">Pageant management</p>
+        <h1 className="mt-2 font-display text-5xl leading-tight text-stone-900">
+          Registration, judging and results, all on one scorecard.
+        </h1>
+        <p className="mt-4 text-lg text-stone-600">
+          Scorecard gives pageant directors, contestants and judges one place to run a competition, from
+          the first invite to the final tally.
+        </p>
+        <div className="mt-8 flex gap-3">
+          <ButtonLink href="/register">Get started</ButtonLink>
+          <ButtonLink href="/login" variant="secondary">
+            Sign in
+          </ButtonLink>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+      <section className="mt-16 grid gap-6 md:grid-cols-3">
+        {FEATURES.map((f) => (
+          <div key={f.title} className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+            <h2 className="font-display text-xl text-plum-800">{f.title}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600">{f.body}</p>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

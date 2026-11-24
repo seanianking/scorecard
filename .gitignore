@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# local sqlite database
+/prisma/*.db
+/prisma/*.db-journal
+
+# contestant photo uploads (private; served via an authorized route)
+/uploads/
